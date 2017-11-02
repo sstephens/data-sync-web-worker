@@ -1,0 +1,10 @@
+title: data-sync-web-worker
+version: 0.0.1
+baseurl: /dist
+excludes:
+  - README.md
+  - src
+  - package.json
+  - package-lock.json
+  - node_modules
+  - GulpFile.js
