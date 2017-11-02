@@ -4,6 +4,7 @@
   "description": "indexedDB data sync through web workers",
   "main": "dist/index.js",
   "scripts": {
+    "deploy": "bin/deploy.sh",
     "build": "gulp",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublish": "npm run build"
