@@ -206,10 +206,12 @@ var _application2 = _interopRequireDefault(_application);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 (function () {
-  global.onmessage = function (message) {
-    global.__APP = new _application2.default(this, message.data[0] || {});
-    global.__APP.startApp();
-  };
+	return function (worker, message) {
+		//global.onmessage = function(message) {
+		global.__APP = new _application2.default(worker, message.data[0] || {});
+		global.__APP.startApp();
+		//};
+	};
 })(); /**
        * @busybusy/data-sync-web-worker
        *

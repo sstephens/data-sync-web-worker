@@ -6,8 +6,10 @@
 import Application from './application';
 
 (function() {
-	global.onmessage = function(message) {
-		global.__APP = new Application(this, message.data[0] || {});
+	return function(worker, message) {
+	//global.onmessage = function(message) {
+		global.__APP = new Application(worker, message.data[0] || {});
 		global.__APP.startApp();
-	};
+	//};
+	}
 })();
