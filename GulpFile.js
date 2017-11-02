@@ -8,7 +8,7 @@ gulp.task("build", function () {
   return browserify({ entries: './src/index.js' })
 		.transform('babelify', { presets: ['env'] })
 		.bundle()
-		.pipe(source('index.js'))
+		.pipe(source('data-sync.js'))
 		.pipe(gulp.dest("dist"));
 });
 
