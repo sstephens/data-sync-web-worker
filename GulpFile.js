@@ -9,7 +9,7 @@ gulp.task("build", function () {
 		.transform('babelify', { presets: ['env'] })
 		.bundle()
 		.pipe(source('data-sync.js'))
-		.pipe(gulp.dest("dist"));
+		.pipe(gulp.dest("./"));
 });
 
 gulp.task('watch', ['build'], function() {

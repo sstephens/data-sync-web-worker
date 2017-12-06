@@ -2,12 +2,12 @@
   "name": "@busybusy/data-sync-web-worker",
   "version": "0.0.1",
   "description": "indexedDB data sync through web workers",
-  "main": "dist/index.js",
+  "main": "data-sync.js",
   "scripts": {
     "deploy": "bin/deploy.sh",
     "build": "gulp",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublish": "npm run build"
+    "prepare": "npm run build"
   },
   "author": "busy inc.",
   "license": "MIT",

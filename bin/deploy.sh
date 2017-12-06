@@ -2,6 +2,4 @@
 
 gulp build
 
-cp index.html dist/
-
-git subtree push --prefix dist origin gh-pages
+git subtree push --prefix docs origin gh-pages
