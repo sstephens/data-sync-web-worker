@@ -30,6 +30,11 @@ export default class API extends Base {
 		this.debug = this.app.getOption('debug');
 	}
 
+	/**
+	 * TODO:
+	 * add debugKey to options for api calls
+	 *
+	 */
 	buildUrl(url) {
 		url = url.replace(/^\//, '');
 		url = `${this.host}/${url}`;
@@ -66,11 +71,10 @@ export default class API extends Base {
 		url += '&' + this.queryString(data);
 		url = url.replace(/&$/, '');
 
-		debug('request.url', url);
+		debug('request', { url, type, data });
 
 		xhr.addEventListener('load', function() {
 			if (xhr.status === 200) {
-				debug('request.success', xhr);
 				success(JSON.parse(xhr.responseText));
 			} else {
 				debug('request.error', xhr);

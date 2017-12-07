@@ -1,6 +1,6 @@
 title: data-sync-web-worker
 version: 0.0.1
-baseurl: /dist
+baseurl: /
 excludes:
   - README.md
   - src

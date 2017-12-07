@@ -35,6 +35,8 @@ var _assert = require('./utils/assert');
 
 var _assert2 = _interopRequireDefault(_assert);
 
+var _debug = require('./utils/debug');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -81,6 +83,7 @@ var Application = function () {
 
 			// sync now the start run loop
 			//this.runloop();
+			(0, _debug.debug)('worker created');
 
 			setInterval(function () {
 				_this.runloop();
@@ -90,6 +93,11 @@ var Application = function () {
 		key: 'runloop',
 		value: function runloop() {
 			this.notify('run');
+		}
+	}, {
+		key: 'post',
+		value: function post(message) {
+			postMessage(message);
 		}
 	}, {
 		key: 'notify',
@@ -150,7 +158,7 @@ var Application = function () {
 
 exports.default = Application;
 
-},{"./container":2,"./managers/api":4,"./managers/db":6,"./managers/sync":7,"./utils/assert":8,"./utils/object":13}],2:[function(require,module,exports){
+},{"./container":2,"./managers/api":4,"./managers/db":6,"./managers/sync":7,"./utils/assert":8,"./utils/debug":9,"./utils/object":13}],2:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -206,11 +214,10 @@ var _application2 = _interopRequireDefault(_application);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 (function () {
-	return function (worker, message) {
-		//global.onmessage = function(message) {
+	global.onmessage = function (message) {
+		var worker = this;
 		global.__APP = new _application2.default(worker, message.data[0] || {});
 		global.__APP.startApp();
-		//};
 	};
 })(); /**
        * @busybusy/data-sync-web-worker
@@ -285,6 +292,13 @@ var API = function (_Base) {
 		return _this;
 	}
 
+	/**
+  * TODO:
+  * add debugKey to options for api calls
+  *
+  */
+
+
 	_createClass(API, [{
 		key: 'buildUrl',
 		value: function buildUrl(url) {
@@ -337,11 +351,10 @@ var API = function (_Base) {
 			url += '&' + this.queryString(data);
 			url = url.replace(/&$/, '');
 
-			(0, _debug.debug)('request.url', url);
+			(0, _debug.debug)('request', { url: url, type: type, data: data });
 
 			xhr.addEventListener('load', function () {
 				if (xhr.status === 200) {
-					(0, _debug.debug)('request.success', xhr);
 					success(JSON.parse(xhr.responseText));
 				} else {
 					(0, _debug.debug)('request.error', xhr);
@@ -590,11 +603,9 @@ var _base = require('./base');
 
 var _base2 = _interopRequireDefault(_base);
 
-var _debug = require('../utils/debug');
+var _object = require('../utils/object');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -606,10 +617,47 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 */
 
 
+//import { debug } from '../utils/debug';
+
+if (typeof Object.assign != 'function') {
+	// Must be writable: true, enumerable: false, configurable: true
+	Object.defineProperty(Object, "assign", {
+		value: function assign(target /*, varArgs */) {
+			// .length of function is 2
+			'use strict';
+
+			if (target == null) {
+				// TypeError if undefined or null
+				throw new TypeError('Cannot convert undefined or null to object');
+			}
+
+			var to = Object(target);
+
+			for (var index = 1; index < arguments.length; index++) {
+				var nextSource = arguments[index];
+
+				if (nextSource != null) {
+					// Skip over if undefined or null
+					for (var nextKey in nextSource) {
+						// Avoid bugs when hasOwnProperty is shadowed
+						if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+							to[nextKey] = nextSource[nextKey];
+						}
+					}
+				}
+			}
+			return to;
+		},
+		writable: true,
+		configurable: true
+	});
+}
+
 /**
  * @class Sync
  *
  */
+
 var Sync = function (_Base) {
 	_inherits(Sync, _Base);
 
@@ -627,10 +675,6 @@ var Sync = function (_Base) {
 		_this.app.on('run', _this, function () {
 			return _this.fetch();
 		});
-
-		_this.organization = _this.app.getOption('auth.organizationId');
-		_this.member = _this.app.getOption('auth.memberId');
-
 		_this.getSyncTime(function () {
 			return _this.fetch();
 		});
@@ -656,7 +700,6 @@ var Sync = function (_Base) {
 
 			var syncTime = 0;
 			if (this.syncData) {
-				(0, _debug.debug)('lastSync', this.syncData.timestamp);
 				syncTime = this.syncData.timestamp;
 			}
 
@@ -666,28 +709,43 @@ var Sync = function (_Base) {
 
 			var tables = this.dbInfo.tables;
 			if (tables && tables.length) {
-				var syncKey = this.dbInfo.syncKey || 'syncstamp';
+				var syncKey = (0, _object.get)(this, 'dbInfo.syncKey') || 'syncstamp';
 				tables.forEach(function (tb) {
 					if (tb.sync) {
-						var query = tb.sync.query || {};
-
+						var modelName = (0, _object.get)(tb, 'name');
+						var query = Object.assign({}, (0, _object.get)(tb, 'sync.query'));
 						if (syncTime) {
-							// TODO: generalize this for apis
-							// that do not support _gte query
-							var key = tb.sync.key || syncKey;
-							query._gte = _defineProperty({}, key, syncTime);
+							var format = '{ "%k": %v }';
+							if ((0, _object.get)(_this3, 'dbInfo.syncFormat')) {
+								format = (0, _object.get)(_this3, 'dbInfo.syncFormat');
+							}
+
+							var key = (0, _object.get)(tb, 'sync.key') || syncKey;
+							var syncValue = JSON.parse(format.replace(/%k/, key).replace(/%v/, syncTime));
+							Object.assign(query, syncValue);
 						}
 
-						_this3.api.get(tb.name, query, function (data) {
+						_this3.api.get(modelName, query, function (data) {
 							_this3.lastUpdate = parseInt(new Date().valueOf() / 1000, 10);
-							_this3.saveAll(tb.name, data, function () {
-								if (tb.cleanup) {
-									_this3.cleanup(tb.name, tb.cleanup);
+							_this3.saveAll(modelName, data, function () {
+								if ((0, _object.get)(tb, 'cleanup')) {
+									_this3.cleanup(modelName, (0, _object.get)(tb, 'cleanup'), function () {
+										return _this3.postUpdate(modelName, data);
+									});
+								} else {
+									_this3.postUpdate(modelName, data);
 								}
 							});
 						});
 					}
 				});
+			}
+		}
+	}, {
+		key: 'postUpdate',
+		value: function postUpdate(modelName, data) {
+			if (data && data.length) {
+				this.app.post({ status: "sync", model: modelName });
 			}
 		}
 	}, {
@@ -706,7 +764,6 @@ var Sync = function (_Base) {
 
 			var cb = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : function () {};
 
-			(0, _debug.debug)('save all', type, data);
 			var done = data.length;
 			if (done === 0) {
 				cb();
@@ -741,7 +798,7 @@ var Sync = function (_Base) {
 
 exports.default = Sync;
 
-},{"../utils/debug":9,"./base":5}],8:[function(require,module,exports){
+},{"../utils/object":13,"./base":5}],8:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -776,7 +833,13 @@ function log() {
 	if (global.console) {
 		var _global$console;
 
-		(_global$console = global.console).log.apply(_global$console, arguments);
+		for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+			args[_key] = arguments[_key];
+		}
+
+		args.unshift('color: cornflowerblue;');
+		args.unshift("%cWEB WORKER DEBUG: ");
+		(_global$console = global.console).log.apply(_global$console, args);
 	}
 }
 

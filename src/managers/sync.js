@@ -3,7 +3,38 @@
  *
  */
 import Base from './base';
-import { debug } from '../utils/debug';
+import { get } from '../utils/object';
+//import { debug } from '../utils/debug';
+
+if (typeof Object.assign != 'function') {
+	// Must be writable: true, enumerable: false, configurable: true
+	Object.defineProperty(Object, "assign", {
+		value: function assign(target /*, varArgs */) { // .length of function is 2
+			'use strict';
+			if (target == null) { // TypeError if undefined or null
+				throw new TypeError('Cannot convert undefined or null to object');
+			}
+
+			var to = Object(target);
+
+			for (var index = 1; index < arguments.length; index++) {
+				var nextSource = arguments[index];
+
+				if (nextSource != null) { // Skip over if undefined or null
+					for (var nextKey in nextSource) {
+						// Avoid bugs when hasOwnProperty is shadowed
+						if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+							to[nextKey] = nextSource[nextKey];
+						}
+					}
+				}
+			}
+			return to;
+		},
+		writable: true,
+		configurable: true
+	});
+}
 
 /**
  * @class Sync
@@ -20,10 +51,6 @@ export default class Sync extends Base {
 		this.api = api;
 
 		this.app.on('run', this, () => this.fetch());
-
-		this.organization = this.app.getOption('auth.organizationId');
-		this.member = this.app.getOption('auth.memberId');
-
 		this.getSyncTime(() => this.fetch());
 	}
 
@@ -37,7 +64,6 @@ export default class Sync extends Base {
 	fetch() {
 		let syncTime = 0;
 		if (this.syncData) {
-			debug('lastSync', this.syncData.timestamp);
 			syncTime = this.syncData.timestamp;
 		}
 
@@ -47,28 +73,40 @@ export default class Sync extends Base {
 
 		let tables = this.dbInfo.tables;
 		if (tables && tables.length) {
-			let syncKey = this.dbInfo.syncKey || 'syncstamp';
+			let syncKey = get(this, 'dbInfo.syncKey') || 'syncstamp';
 			tables.forEach(tb => {
 				if (tb.sync) {
-					let query = tb.sync.query || {};
-
+					let modelName = get(tb, 'name');
+					let query = Object.assign({}, get(tb, 'sync.query'));
 					if (syncTime) {
-						// TODO: generalize this for apis
-						// that do not support _gte query
-						let key = tb.sync.key || syncKey;
-						query._gte = { [key]: syncTime };
+						let format = '{ "%k": %v }';
+						if (get(this, 'dbInfo.syncFormat')) {
+							format = get(this, 'dbInfo.syncFormat');
+						}
+
+						let key = get(tb, 'sync.key') || syncKey;
+						let syncValue = JSON.parse(format.replace(/%k/, key).replace(/%v/, syncTime));
+						Object.assign(query, syncValue);
 					}
 
-					this.api.get(tb.name, query, data => {
+					this.api.get(modelName, query, data => {
 						this.lastUpdate = parseInt((new Date()).valueOf() / 1000, 10);
-						this.saveAll(tb.name, data, () => {
-							if (tb.cleanup) {
-								this.cleanup(tb.name, tb.cleanup);
+						this.saveAll(modelName, data, () => {
+							if (get(tb, 'cleanup')) {
+								this.cleanup(modelName, get(tb, 'cleanup'), () => this.postUpdate(modelName, data));
+							} else {
+								this.postUpdate(modelName, data);
 							}
 						});
 					});
 				}
 			});
+		}
+	}
+
+	postUpdate(modelName, data) {
+		if (data && data.length) {
+			this.app.post({ status: "sync", model: modelName });
 		}
 	}
 
@@ -79,7 +117,6 @@ export default class Sync extends Base {
 	}
 
 	saveAll(type, data, cb=function(){}) {
-		debug('save all', type, data);
 		let done = data.length;
 		if (done === 0) {
 			cb();

@@ -4,3 +4,4 @@ bin
 src
 _config.yml
 GulpFile.js
+.git

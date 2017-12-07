@@ -8,6 +8,7 @@ import Sync from './managers/sync';
 import { get, set } from './utils/object';
 import Container from './container';
 import assert from './utils/assert';
+import { debug } from './utils/debug';
 
 /**
  * instance storage for reference
@@ -42,6 +43,7 @@ export default class Application {
 	startApp() {
 		// sync now the start run loop
 		//this.runloop();
+		debug('worker created');
 
 		setInterval(() => {
 			this.runloop();
@@ -50,6 +52,10 @@ export default class Application {
 
 	runloop() {
 		this.notify('run');
+	}
+
+	post(message) {
+		postMessage(message);
 	}
 
 	notify(name) {

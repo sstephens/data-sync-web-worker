@@ -4,6 +4,8 @@
  */
 function log(...args) {
 	if (global.console) {
+		args.unshift('color: cornflowerblue;');
+		args.unshift("%cWEB WORKER DEBUG: ");
 		global.console.log(...args);
 	}
 }
