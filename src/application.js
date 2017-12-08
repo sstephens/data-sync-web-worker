@@ -47,7 +47,7 @@ export default class Application {
 
 		setInterval(() => {
 			this.runloop();
-		}, 60000);
+		}, 10000);
 	}
 
 	runloop() {
@@ -55,7 +55,7 @@ export default class Application {
 	}
 
 	post(message) {
-		postMessage(message);
+		this.worker.postMessage(message);
 	}
 
 	notify(name) {

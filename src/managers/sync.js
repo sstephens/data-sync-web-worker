@@ -71,35 +71,33 @@ export default class Sync extends Base {
 				this.getSyncTime();
 		});
 
-		let tables = this.dbInfo.tables;
-		if (tables && tables.length) {
+		let tables = get(this, 'dbInfo.sync');
+		if (tables) {
 			let syncKey = get(this, 'dbInfo.syncKey') || 'syncstamp';
-			tables.forEach(tb => {
-				if (tb.sync) {
-					let modelName = get(tb, 'name');
-					let query = Object.assign({}, get(tb, 'sync.query'));
-					if (syncTime) {
-						let format = '{ "%k": %v }';
-						if (get(this, 'dbInfo.syncFormat')) {
-							format = get(this, 'dbInfo.syncFormat');
-						}
-
-						let key = get(tb, 'sync.key') || syncKey;
-						let syncValue = JSON.parse(format.replace(/%k/, key).replace(/%v/, syncTime));
-						Object.assign(query, syncValue);
+			Object.keys(tables).forEach((modelName) => {
+				let tb = tables[modelName];
+				let query = Object.assign({}, get(tb, 'query'));
+				if (syncTime) {
+					let format = '{ "%k": %v }';
+					if (get(this, 'dbInfo.syncFormat')) {
+						format = get(this, 'dbInfo.syncFormat');
 					}
 
-					this.api.get(modelName, query, data => {
-						this.lastUpdate = parseInt((new Date()).valueOf() / 1000, 10);
-						this.saveAll(modelName, data, () => {
-							if (get(tb, 'cleanup')) {
-								this.cleanup(modelName, get(tb, 'cleanup'), () => this.postUpdate(modelName, data));
-							} else {
-								this.postUpdate(modelName, data);
-							}
-						});
-					});
+					let key = get(tb, 'key') || syncKey;
+					let syncValue = JSON.parse(format.replace(/%k/, key).replace(/%v/, syncTime));
+					Object.assign(query, syncValue);
 				}
+
+				this.api.get(modelName, query, data => {
+					this.lastUpdate = parseInt((new Date()).valueOf() / 1000, 10);
+					this.saveAll(modelName, data, () => {
+						//if (get(this, `dbInfo.cleanup.${modelName}`)) {
+						//	this.cleanup(modelName, get(this, `dbInfo.cleanup.${modelName}`), () => this.postUpdate(modelName, data));
+						//} else {
+							this.postUpdate(modelName, data);
+						//}
+					});
+				});
 			});
 		}
 	}
