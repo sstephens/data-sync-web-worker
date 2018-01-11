@@ -4556,6 +4556,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+/***/
+var SYNC_TIME = 60000;
+
 /**
  * instance storage for reference
  * by application class
@@ -4602,7 +4605,7 @@ var Application = function () {
 
 			setInterval(function () {
 				_this.runloop();
-			}, 10000);
+			}, SYNC_TIME);
 		}
 	}, {
 		key: 'runloop',
@@ -4980,6 +4983,7 @@ var DB = function (_Base) {
 
 		_this.app = app;
 		_this.dbInfo = app.getOption('db');
+		_this.dbStore = _this.dbInfo.stores[0];
 		return _this;
 	}
 
@@ -5092,11 +5096,12 @@ var DB = function (_Base) {
 
 exports.default = DB;
 function dbOpen(dbInfo, type, cb) {
-	var stores = dbInfo.stores || {};
-	stores.__sync = 'id';
-
+	var stores = dbInfo.stores || [];
 	var db = new _dexie2.default(dbInfo.name);
-	db.version(dbInfo.version).stores(dbInfo.stores);
+	stores.forEach(function (_store) {
+		_store.stores.__sync = 'id';
+		db.version(_store.version).stores(_store.stores);
+	});
 
 	db.open().catch(function (e) {
 		(0, _debug.debug)('db open error', e);
@@ -5225,6 +5230,7 @@ var Sync = function (_Base) {
 		_this.__className = 'manager:sync';
 		_this.app = app;
 		_this.dbInfo = app.getOption('db');
+		_this.dbStore = _this.dbInfo.stores[0];
 		_this.db = db;
 		_this.api = api;
 
@@ -5263,16 +5269,16 @@ var Sync = function (_Base) {
 				_this3.getSyncTime();
 			});
 
-			var tables = (0, _object.get)(this, 'dbInfo.sync');
+			var tables = (0, _object.get)(this, 'dbStore.sync');
 			if (tables) {
-				var syncKey = (0, _object.get)(this, 'dbInfo.syncKey') || 'syncstamp';
+				var syncKey = (0, _object.get)(this, 'dbStore.syncKey') || 'syncstamp';
 				Object.keys(tables).forEach(function (modelName) {
 					var tb = tables[modelName];
 					var query = Object.assign({}, (0, _object.get)(tb, 'query'));
 					if (syncTime) {
 						var format = '{ "%k": %v }';
-						if ((0, _object.get)(_this3, 'dbInfo.syncFormat')) {
-							format = (0, _object.get)(_this3, 'dbInfo.syncFormat');
+						if ((0, _object.get)(_this3, 'dbStore.syncFormat')) {
+							format = (0, _object.get)(_this3, 'dbStore.syncFormat');
 						}
 
 						var key = (0, _object.get)(tb, 'key') || syncKey;
@@ -5283,8 +5289,8 @@ var Sync = function (_Base) {
 					_this3.api.get(modelName, query, function (data) {
 						_this3.lastUpdate = parseInt(new Date().valueOf() / 1000, 10);
 						_this3.saveAll(modelName, data, function () {
-							//if (get(this, `dbInfo.cleanup.${modelName}`)) {
-							//	this.cleanup(modelName, get(this, `dbInfo.cleanup.${modelName}`), () => this.postUpdate(modelName, data));
+							//if (get(this, `dbStore.cleanup.${modelName}`)) {
+							//	this.cleanup(modelName, get(this, `dbStore.cleanup.${modelName}`), () => this.postUpdate(modelName, data));
 							//} else {
 							_this3.postUpdate(modelName, data);
 							//}

@@ -21,6 +21,7 @@ export default class DB extends Base {
 
 		this.app = app;
 		this.dbInfo = app.getOption('db');
+		this.dbStore = this.dbInfo.stores[0];
 	}
 
 	put(type, data, cb=function(){}) {
@@ -116,11 +117,12 @@ export default class DB extends Base {
 //}
 
 function dbOpen(dbInfo, type, cb) {
-	const stores = dbInfo.stores || {};
-	stores.__sync = 'id';
-
+	const stores = dbInfo.stores || [];
 	const db = new Dexie(dbInfo.name);
-	db.version(dbInfo.version).stores(dbInfo.stores);
+	stores.forEach(_store => {
+		_store.stores.__sync = 'id';
+		db.version(_store.version).stores(_store.stores);
+	});
 
 	db.open().catch(e => {
 		debug('db open error', e);

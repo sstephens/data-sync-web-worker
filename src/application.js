@@ -10,6 +10,9 @@ import Container from './container';
 import assert from './utils/assert';
 import { debug } from './utils/debug';
 
+/***/
+const SYNC_TIME = 60000;
+
 /**
  * instance storage for reference
  * by application class
@@ -47,7 +50,7 @@ export default class Application {
 
 		setInterval(() => {
 			this.runloop();
-		}, 10000);
+		}, SYNC_TIME);
 	}
 
 	runloop() {

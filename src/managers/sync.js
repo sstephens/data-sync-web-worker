@@ -47,6 +47,7 @@ export default class Sync extends Base {
 		this.__className = 'manager:sync';
 		this.app = app;
 		this.dbInfo = app.getOption('db');
+		this.dbStore = this.dbInfo.stores[0];
 		this.db = db;
 		this.api = api;
 
@@ -71,16 +72,16 @@ export default class Sync extends Base {
 				this.getSyncTime();
 		});
 
-		let tables = get(this, 'dbInfo.sync');
+		let tables = get(this, 'dbStore.sync');
 		if (tables) {
-			let syncKey = get(this, 'dbInfo.syncKey') || 'syncstamp';
+			let syncKey = get(this, 'dbStore.syncKey') || 'syncstamp';
 			Object.keys(tables).forEach((modelName) => {
 				let tb = tables[modelName];
 				let query = Object.assign({}, get(tb, 'query'));
 				if (syncTime) {
 					let format = '{ "%k": %v }';
-					if (get(this, 'dbInfo.syncFormat')) {
-						format = get(this, 'dbInfo.syncFormat');
+					if (get(this, 'dbStore.syncFormat')) {
+						format = get(this, 'dbStore.syncFormat');
 					}
 
 					let key = get(tb, 'key') || syncKey;
@@ -91,8 +92,8 @@ export default class Sync extends Base {
 				this.api.get(modelName, query, data => {
 					this.lastUpdate = parseInt((new Date()).valueOf() / 1000, 10);
 					this.saveAll(modelName, data, () => {
-						//if (get(this, `dbInfo.cleanup.${modelName}`)) {
-						//	this.cleanup(modelName, get(this, `dbInfo.cleanup.${modelName}`), () => this.postUpdate(modelName, data));
+						//if (get(this, `dbStore.cleanup.${modelName}`)) {
+						//	this.cleanup(modelName, get(this, `dbStore.cleanup.${modelName}`), () => this.postUpdate(modelName, data));
 						//} else {
 							this.postUpdate(modelName, data);
 						//}
